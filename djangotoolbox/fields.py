@@ -9,6 +9,19 @@ __all__ = ('RawField', 'ListField', 'DictField', 'SetField',
 
 EMPTY_ITER = ()
 
+pending_lookups = {}
+
+def do_pending_lookups(sender, **kwargs):
+    """
+    Handle any pending relations to the sending model. Sent from class_prepared.
+    """
+    key = (sender._meta.app_label, sender.__name__)
+    for iterfield, cls in pending_lookups.pop(key, []):
+        iterfield.item_field.rel.to = sender
+        iterfield.item_field.do_related_class(sender, cls)
+
+models.signals.class_prepared.connect(do_pending_lookups)
+
 class _HandleAssignment(object):
     """
     A placeholder class that provides a way to set the attribute on the model.
@@ -52,7 +65,7 @@ class AbstractIterableField(models.Field):
         elif callable(item_field):
             item_field = item_field()
         self.item_field = item_field
-
+            
     def contribute_to_class(self, cls, name):
         self.item_field.model = cls
         self.item_field.name = name
@@ -61,6 +74,13 @@ class AbstractIterableField(models.Field):
         metaclass = getattr(self.item_field, '__metaclass__', None)
         if issubclass(metaclass, models.SubfieldBase):
             setattr(cls, self.name, _HandleAssignment(self))
+        if isinstance(self.item_field, models.ForeignKey) and isinstance(self.item_field.rel.to, basestring):
+            """
+            If rel.to is a string because the actual class is not yet defined, look up the 
+            actual class later.  Refer to django.models.fields.related.RelatedField.contribute_to_class.
+            """
+            key = (cls._meta.app_label, self.item_field.rel.to)
+            pending_lookups.setdefault(key, []).append((self, cls))
 
     @property
     def db_type_prefix(self):
