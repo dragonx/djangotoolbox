@@ -239,6 +239,35 @@ class FilterTest(TestCase):
             ListModel.objects.exclude(Q(names__lt='Sakura') | Q(names__gte='Sasuke'))],
                 [['Kakashi', 'Naruto', 'Sasuke', 'Sakura']])
 
+    def test_list_with_foreignkeys(self):
+
+        def DoTest(FieldType):
+            class ReferenceList2(models.Model):
+                keys = ListField(FieldType('Model'))
+
+            class Model(models.Model):
+                pass
+
+            class ReferenceList(models.Model):
+                keys = ListField(FieldType(Model))
+
+            model1 = Model.objects.create()
+            model2 = Model.objects.create()
+            rl = ReferenceList.objects.create(keys=[model1.pk, model2.pk])
+            self.assertEqual(ReferenceList.objects.get().keys[0], model1.pk)
+            self.assertEqual(len(ReferenceList.objects.filter(keys=model1.pk)), 1)
+            rl2 = ReferenceList2.objects.create(keys=[model1.pk, model2.pk])
+            self.assertEqual(ReferenceList.objects.get().keys[0], model1.pk)
+            self.assertEqual(len(ReferenceList.objects.filter(keys=model1.pk)), 1)
+            model1.delete()
+            model2.delete()
+            rl.delete()
+            rl2.delete()
+
+        field_types = [ models.ForeignKey, models.OneToOneField ]
+        for field in field_types:
+            DoTest(field)
+
 class BaseModel(models.Model):
     pass
 
