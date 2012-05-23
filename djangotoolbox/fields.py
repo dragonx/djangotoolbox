@@ -81,7 +81,7 @@ class AbstractIterableField(models.Field):
 
         # If items' field uses SubfieldBase we also need to.
         item_metaclass = getattr(self.item_field, '__metaclass__', None)
-        if issubclass(item_metaclass, models.SubfieldBase):
+        if item_metaclass and issubclass(item_metaclass, models.SubfieldBase):
             setattr(cls, self.name, Creator(self))
 
         if isinstance(self.item_field, models.ForeignKey) and isinstance(self.item_field.rel.to, basestring):
@@ -334,7 +334,9 @@ class EmbeddedModelField(models.Field):
         # Create the model instance.
         # Note: the double underline is not a typo -- this lets the
         # model know that the object already exists in the database.
-        return embedded_model(__entity_exists=True, **attribute_values)
+        result = embedded_model(**attribute_values)
+        result.__entity_exists = True
+        return result
 
     def get_db_prep_save(self, embedded_instance, connection):
         """
@@ -363,7 +365,7 @@ class EmbeddedModelField(models.Field):
         # fields, create the field => value mapping to be passed to
         # storage preprocessing.
         field_values = {}
-        add = not embedded_instance._entity_exists
+        add = not getattr(embedded_instance, '__entity_exists', False)
         for field in embedded_instance._meta.fields:
             value = field.get_db_prep_save(
                 field.pre_save(embedded_instance, add), connection=connection)
@@ -389,7 +391,7 @@ class EmbeddedModelField(models.Field):
 
         # This instance will exist in the database soon.
         # TODO.XXX: Ensure that this doesn't cause race conditions.
-        embedded_instance._entity_exists = True
+        embedded_instance.__entity_exists = True
 
         return field_values
 
