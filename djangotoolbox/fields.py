@@ -335,7 +335,7 @@ class EmbeddedModelField(models.Field):
         # Note: the double underline is not a typo -- this lets the
         # model know that the object already exists in the database.
         result = embedded_model(**attribute_values)
-        result.__entity_exists = True
+        result._state.adding = False
         return result
 
     def get_db_prep_save(self, embedded_instance, connection):
@@ -365,7 +365,7 @@ class EmbeddedModelField(models.Field):
         # fields, create the field => value mapping to be passed to
         # storage preprocessing.
         field_values = {}
-        add = not getattr(embedded_instance, '__entity_exists', False)
+        add = embedded_instance._state.adding
         for field in embedded_instance._meta.fields:
             value = field.get_db_prep_save(
                 field.pre_save(embedded_instance, add), connection=connection)
@@ -391,7 +391,7 @@ class EmbeddedModelField(models.Field):
 
         # This instance will exist in the database soon.
         # TODO.XXX: Ensure that this doesn't cause race conditions.
-        embedded_instance.__entity_exists = True
+        embedded_instance._state.adding = False
 
         return field_values
 
