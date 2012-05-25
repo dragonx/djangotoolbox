@@ -1,11 +1,12 @@
 # All fields except for BlobField written by Jonas Haag <jonas@lophus.org>
 
 from django.core.exceptions import ValidationError
+from django.utils.importlib import import_module
 from django.db import models
 from django.db.models.fields.subclassing import Creator
 from django.db.utils import IntegrityError
-from django.utils.importlib import import_module
 from django.db.models.fields.related import add_lazy_relation
+
 
 __all__ = ('RawField', 'ListField', 'SetField', 'DictField',
            'EmbeddedModelField', 'BlobField')
@@ -83,7 +84,7 @@ class AbstractIterableField(models.Field):
         item_metaclass = getattr(self.item_field, '__metaclass__', None)
         if issubclass(item_metaclass, models.SubfieldBase):
             setattr(cls, self.name, Creator(self))
-            
+
         if isinstance(self.item_field, models.ForeignKey) and isinstance(self.item_field.rel.to, basestring):
             """
             If rel.to is a string because the actual class is not yet defined, look up the
@@ -92,6 +93,7 @@ class AbstractIterableField(models.Field):
             def _resolve_lookup(_, resolved_model, __):
                 self.item_field.rel.to = resolved_model
                 self.item_field.do_related_class(self, cls)
+
             add_lazy_relation(cls, self, self.item_field.rel.to, _resolve_lookup)
 
     def _map(self, function, iterable, *args, **kwargs):
@@ -131,13 +133,8 @@ class AbstractIterableField(models.Field):
         """
         if value is None:
             return None
-        
-        try:
-            return self._map(self.item_field.get_db_prep_save, value,
+        return self._map(self.item_field.get_db_prep_save, value,
                          connection=connection)
-        except AttributeError, e:
-            import eat
-            eat.gaebp(True)
 
     def get_db_prep_lookup(self, lookup_type, value, connection,
                            prepared=False):
@@ -258,6 +255,7 @@ class EmbeddedModelField(models.Field):
     def get_internal_type(self):
         return 'EmbeddedModelField'
 
+
     def _set_model(self, model):
         """
         Resolves embedded model class once the field knows the model it
@@ -281,6 +279,7 @@ class EmbeddedModelField(models.Field):
             add_lazy_relation(model, self, self.embedded_model, _resolve_lookup)
 
     model = property(lambda self: self._model, _set_model)
+
 
     def stored_model(self, column_values):
         """
