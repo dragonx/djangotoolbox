@@ -1,11 +1,12 @@
 # All fields except for BlobField written by Jonas Haag <jonas@lophus.org>
 
 from django.core.exceptions import ValidationError
+from django.utils.importlib import import_module
 from django.db import models
 from django.db.models.fields.subclassing import Creator
 from django.db.utils import IntegrityError
-from django.utils.importlib import import_module
 from django.db.models.fields.related import add_lazy_relation
+
 
 __all__ = ('RawField', 'ListField', 'SetField', 'DictField',
            'EmbeddedModelField', 'BlobField')
@@ -254,6 +255,7 @@ class EmbeddedModelField(models.Field):
     def get_internal_type(self):
         return 'EmbeddedModelField'
 
+
     def _set_model(self, model):
         """
         Resolves embedded model class once the field knows the model it
@@ -277,6 +279,7 @@ class EmbeddedModelField(models.Field):
             add_lazy_relation(model, self, self.embedded_model, _resolve_lookup)
 
     model = property(lambda self: self._model, _set_model)
+
 
     def stored_model(self, column_values):
         """
