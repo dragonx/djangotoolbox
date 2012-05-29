@@ -535,9 +535,6 @@ class NonrelInsertCompiler(NonrelCompiler):
                     raise IntegrityError("You can't set %s (a non-nullable "
                                          "field) to None!" % field.name)
 
-                #db_type = field.db_type(connection=self.connection)
-                #value = self.convert_value_for_db(db_type, value)
-
                 # Prepare value for database, note that query.values have
                 # already passed through get_db_prep_save.
                 value = self.ops.value_for_db(value, field)
