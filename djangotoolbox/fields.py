@@ -1,11 +1,12 @@
 # All fields except for BlobField written by Jonas Haag <jonas@lophus.org>
 
 from django.core.exceptions import ValidationError
+from django.utils.importlib import import_module
 from django.db import models
 from django.db.models.fields.subclassing import Creator
 from django.db.utils import IntegrityError
-from django.utils.importlib import import_module
 from django.db.models.fields.related import add_lazy_relation
+
 
 __all__ = ('RawField', 'ListField', 'SetField', 'DictField',
            'EmbeddedModelField', 'BlobField')
@@ -197,8 +198,10 @@ class SetField(AbstractIterableField):
     Field representing a Python ``set``.
     """
     _type = set
-    db_type_prefix = 'SetField'
-    
+
+    def get_internal_type(self):
+        return 'SetField'
+
     def value_to_string(self, obj):
         """
         Custom method for serialization, as JSON doesn't support
@@ -252,6 +255,7 @@ class EmbeddedModelField(models.Field):
     def get_internal_type(self):
         return 'EmbeddedModelField'
 
+
     def _set_model(self, model):
         """
         Resolves embedded model class once the field knows the model it
@@ -275,6 +279,7 @@ class EmbeddedModelField(models.Field):
             add_lazy_relation(model, self, self.embedded_model, _resolve_lookup)
 
     model = property(lambda self: self._model, _set_model)
+
 
     def stored_model(self, column_values):
         """
@@ -330,11 +335,9 @@ class EmbeddedModelField(models.Field):
             if field.attname in attribute_values)
 
         # Create the model instance.
-        # Note: the double underline is not a typo -- this lets the
-        # model know that the object already exists in the database.
-        result = embedded_model(**attribute_values)
-        result._state.adding = False
-        return result
+        instance = embedded_model(**attribute_values)
+        instance._state.adding = False
+        return instance
 
     def get_db_prep_save(self, embedded_instance, connection):
         """

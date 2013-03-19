@@ -88,6 +88,7 @@ class NonrelDatabaseOperations(BaseDatabaseOperations):
           moving there code from `Field.get_db_prep_lookup` (and maybe
           `RelatedField.get_db_prep_lookup`).
     """
+
     def pk_default_value(self):
         """
         Returns None, to be interpreted by back-ends as a request to

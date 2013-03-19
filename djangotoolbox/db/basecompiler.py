@@ -15,8 +15,8 @@ from django.utils.tree import Node
 EMULATED_OPS = {
     'exact': lambda x, y: y in x if isinstance(x, (list, tuple)) else x == y,
     'iexact': lambda x, y: x.lower() == y.lower(),
-    'startswith': lambda x, y: x.startswith(y),
-    'istartswith': lambda x, y: x.lower().startswith(y.lower()),
+    'startswith': lambda x, y: x.startswith(y[0]),
+    'istartswith': lambda x, y: x.lower().startswith(y[0].lower()),
     'isnull': lambda x, y: x is None if y else x is not None,
     'in': lambda x, y: x in y,
     'lt': lambda x, y: x < y,
@@ -522,29 +522,30 @@ class NonrelInsertCompiler(NonrelCompiler):
     """
 
     def execute_sql(self, return_id=False):
-        docs = []
-        pk = self.query.get_meta().pk
+        to_insert = []
+        pk_field = self.query.get_meta().pk
         for obj in self.query.objs:
-            doc = {}
+            field_values = {}
             for field in self.query.fields:
                 value = field.get_db_prep_save(
                     getattr(obj, field.attname) if self.query.raw else field.pre_save(obj, obj._state.adding),
                     connection=self.connection
                 )
-                if not field.null and value is None and not field.primary_key:
+                if value is None and not field.null and not field.primary_key:
                     raise IntegrityError("You can't set %s (a non-nullable "
                                          "field) to None!" % field.name)
 
                 # Prepare value for database, note that query.values have
                 # already passed through get_db_prep_save.
                 value = self.ops.value_for_db(value, field)
-                doc[field.column] = value
-            
-            docs.append(doc)
 
-        key = self.insert(docs, return_id=return_id)
+                field_values[field.column] = value
+            to_insert.append(field_values)
+
+        key = self.insert(to_insert, return_id=return_id)
+
         # Pass the key value through normal database deconversion.
-        return self.ops.convert_values(self.ops.value_from_db(key, pk), pk)
+        return self.ops.convert_values(self.ops.value_from_db(key, pk_field), pk_field)
 
     def insert(self, values, return_id):
         """
